@@ -3,16 +3,17 @@
 var forge = require('node-forge');
 var through = require('through2');
 var gutil = require('gulp-util');
+var defaults = require('lodash').defaults;
 var PluginError = gutil.PluginError;
 
-module.exports = function (password, opt) {
+module.exports = function (password, opts) {
   
-  var encrypted;
-  
-  var defaultOpt = {
+  var opt = defaults(opts || {}, {
     keySize: 24,
-    ivSize: 8
-  };
+    ivSize: 8,
+    useSalt: true,
+  });
+
 
   function protect (file, enc, cb) {
 
@@ -20,17 +21,15 @@ module.exports = function (password, opt) {
       throw new PluginError('gulp-protect', 'Missing file option for gulp-protect');
     }
     
-    opt = opt || defaultOpt;
-
     // Get derived bytes
-    var salt = forge.random.getBytesSync(8);
-    // var md = forge.md.sha1.create(); // "-md sha1"
+    var salt = opt.useSalt ? forge.random.getBytesSync(8) : null;
     
-    var derivedBytes = forge.pbe.opensslDeriveBytes(password, salt, opt.keySize + opt.ivSize/*, md*/);
+    var derivedBytes = forge.pbe.opensslDeriveBytes(password, salt, opt.keySize + opt.ivSize);
     var buffer = forge.util.createBuffer(derivedBytes);
     var key = buffer.getBytes(opt.keySize);
     var iv = buffer.getBytes(opt.ivSize);
 
+    // Create cipher
     var cipher = forge.cipher.createCipher('3DES-CBC', key);
     cipher.start({iv: iv});
     cipher.update(forge.util.createBuffer(file.contents, 'utf8'));
@@ -39,8 +38,9 @@ module.exports = function (password, opt) {
     var output = forge.util.createBuffer();
 
     // If using a salt, prepend this to the output
+    // and add 'Salted__' prefix to match openssl tool output
     if (salt !== null) {
-      output.putBytes('Salted__'); // (add to match openssl tool output)
+      output.putBytes('Salted__'); 
       output.putBytes(salt);
     }
 
@@ -54,10 +54,6 @@ module.exports = function (password, opt) {
     
     cb();
   
-  }
-
-  function endStream (cb) {
-    cb();
   }
 
   return through.obj(protect);
