@@ -5,13 +5,19 @@ var through = require('through2');
 var gutil = require('gulp-util');
 var defaults = require('lodash').defaults;
 var PluginError = gutil.PluginError;
+var fs = require('fs');
+var uglify = require('uglify-js');
+
 
 module.exports = function (password, opts) {
+  
   
   var opt = defaults(opts || {}, {
     keySize: 24,
     ivSize: 8,
     useSalt: true,
+    writeAsVar: 'protect',
+    decryptFn: './node_modules/gulp-protect/lib/decrypt.js'
   });
 
 
@@ -46,9 +52,20 @@ module.exports = function (password, opts) {
 
     output.putBuffer(cipher.output);
 
+    var encrypted = forge.util.encode64(output.getBytes());
+
+    // Write encrypted string as variable
+    if (opt.writeAsVar && typeof encrypted === 'string') {
+      encrypted = 'var ' + opt.writeAsVar + ' = "' + encrypted + '";';
+    }
+    // Add decryption function
+    if (opt.decryptFn) {
+      encrypted = appendDecryptionFn(encrypted);
+    }
+    // Add minified forge script
+    encrypted = prependForge(encrypted);
     // Create buffer from encrypted output and replace the contents of the file
-    file.contents = new Buffer(forge.util.encode64(output.getBytes()), 'utf8');
-    
+    file.contents = new Buffer(encrypted, 'utf8');
     // Push file
     this.push(file);
     
@@ -56,12 +73,56 @@ module.exports = function (password, opts) {
   
   }
 
+
+  function prependForge (file) {
+    
+    var str = fs.readFileSync('node_modules/node-forge/js/forge.min.js', 'utf8');
+    
+    return str
+      + '\n\n'
+      + file;
+
+  }
+
+
+  function minify(file, options) {
+    
+    var mangled = '';
+
+    options = options || {};
+
+    if (typeof file !== 'string') {
+      file = String(file.contents);
+    }
+    try {
+      mangled = uglify.minify(file, options);
+      // mangled.code = new Buffer(mangled.code.replace(reSourceMapComment, ''));
+      return mangled;
+    } catch (e) {
+      throw new PluginError('gulp-protect', e);
+      return '';
+    }
+  }
+
+
+  function appendDecryptionFn (file) {
+    
+    if (opt.decryptFn === undefined || typeof opt.decryptFn !== 'string') {
+      throw new PluginError('gulp-protect', 'Missing decrypt method for gulp-protect');
+      return file;
+    }
+
+    return file 
+      + '\n\n'
+      + minify(opt.decryptFn).code
+      + '\n\n'
+      + opt.callback;
+  }
+
+  function endStream (cb) {
+    cb();
+  }
+
   return through.obj(protect);
 
 };
-
-
-
-
-
-

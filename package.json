@@ -2,20 +2,34 @@
   "name": "gulp-protect",
   "version": "0.0.1",
   "description": "Protect javascript sourcecode with forge",
+  "keywords": [
+    "protect",
+    "encrypt",
+    "forge",
+    "cipher",
+    "security",
+    "licensing"
+  ],
   "author": "@sjeedandi [info@rogiervankleef.com] (rogiervankleef.com)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "engines": {
+    "node": "*"
+  },
   "dependencies": {
+    "fs": "0.0.2",
     "gulp-util": "^3.0.4",
     "lodash": "^3.8.0",
     "node-forge": "^0.6.26",
-    "through2": "^0.6.5"
+    "through2": "^0.6.5",
+    "uglify-js": "^2.4.20"
   },
   "devDependencies": {
     "gulp": "^3.8.11"
   },
   "repository": "sjeedandi/gulp-protect",
-  "license": "MIT"
+  "license": "MIT",
+  "readme": "ERROR: No README data found!"
 }
