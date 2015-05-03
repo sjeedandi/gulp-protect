@@ -1,6 +1,6 @@
 {
   "name": "gulp-protect",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Protect javascript sourcecode with AES encryption",
   "keywords": [
     "protect",
@@ -34,5 +34,5 @@
     "gulp": "^3.8.11"
   },
   "repository": "sjeedandi/gulp-protect",
-  "license": "MIT",
+  "license": "MIT"
 }
