@@ -1,0 +1,3 @@
+function myApp () {
+  alert('decrypted');
+}

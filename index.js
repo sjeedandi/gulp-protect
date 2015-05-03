@@ -9,6 +9,7 @@ var path = require('path');
 var replace = require('replace');
 var async = require('async');
 var concat = require('concat');
+var del = require('delete');
 var _ = require('lodash');
 var PluginError = gutil.PluginError;
 
@@ -16,15 +17,19 @@ var PluginError = gutil.PluginError;
 module.exports = function (encryptionKey, opts, callback) {
 
 
-  var opt = _.defaults(opts || {}, {
+  var opt = _.merge({
     encoding: 'utf8',
     counter: 5,
-    decryptFile: './lib/decrypt3.js',
-    forgeFile: './lib/forge.min.js',
-    aesFile: './node_modules/aes-js/index.js',
+    partials: {
+      aes: './node_modules/aes-js/index.js',
+      start: './lib/header.js',
+      decrypt: './lib/decrypt.js',
+      auth: './lib/authenticate.js',
+      end: './lib/footer.js',
+    },
     tmp: './tmp',
     options: {}
-  });
+  }, opts);
 
 
   // Uses 24 bits encryptionKey to encrypt data 
@@ -89,10 +94,15 @@ module.exports = function (encryptionKey, opts, callback) {
 
 
   function createApplicationScript (replacements, callback) {
+    
+    var partials = [];
+    _.each(opt.partials, function (value) {
+      partials.push(path.resolve(__dirname, value));
+    });
 
     async.series([
         function (cb) {
-          concat([path.resolve(__dirname, opt.aesFile), path.resolve(__dirname, opt.decryptFile)], opt.tmp, function (err) {
+          concat(partials, opt.tmp, function (err) {
             if (err) {
               throw new PluginError('gulp-protect', 'Could not concatenate templates');
             }
@@ -114,7 +124,7 @@ module.exports = function (encryptionKey, opts, callback) {
         function (cb) {
           fs.writeFile(opt.tmp, minify(opt.tmp), function (err) {
             if (err) {
-              throw new PluginError('gulp-protect', 'Could not write .tmp');
+              throw new PluginError('gulp-protect', 'Could not write tmp file');
             }
             cb();
           });
@@ -125,8 +135,11 @@ module.exports = function (encryptionKey, opts, callback) {
           encoding: 'utf8'
         }, function (err, content) {
           if (err) {
-            throw new PluginError('gulp-protect', 'Could not concatenate forge.js with .tmp');
+            throw new PluginError('gulp-protect', 'Could not read tmp file');
           }
+          // Remove tmp file
+          del.sync(opt.tmp);
+          // Callback
           callback(content);
         });
       });
